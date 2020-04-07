@@ -12,11 +12,11 @@ interface TextAreaProps {
   minRows?: number;
   placeholder?: string;
   onChange?: (value: string) => void;
-  inputRef?: (node: HTMLTextAreaElement) => void;
+  inputRef?: React.MutableRefObject<any>;
   onFocus?: React.FocusEventHandler<HTMLTextAreaElement>;
 }
 
-export const TextArea: React.StatelessComponent<TextAreaProps> = props => {
+export const TextArea: React.FunctionComponent<TextAreaProps> = props => {
   const onChange = (e: React.FormEvent<HTMLTextAreaElement>) => {
     if (props.onChange) {
       props.onChange(e.currentTarget.value);

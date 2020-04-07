@@ -1,6 +1,7 @@
 package postgres_test
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -76,10 +77,11 @@ func TestNotificationStorage_GetActiveNotifications(t *testing.T) {
 	Expect(err).IsNil()
 	Expect(activeNotifications.Result).HasLen(2)
 
-	bus.Dispatch(aryaStarkCtx, &cmd.MarkNotificationAsRead{ID: activeNotifications.Result[0].ID})
-	bus.Dispatch(aryaStarkCtx, &cmd.MarkNotificationAsRead{ID: activeNotifications.Result[1].ID})
+	bus.MustDispatch(aryaStarkCtx, &cmd.MarkNotificationAsRead{ID: activeNotifications.Result[0].ID})
+	bus.MustDispatch(aryaStarkCtx, &cmd.MarkNotificationAsRead{ID: activeNotifications.Result[1].ID})
 
-	trx.Execute("UPDATE notifications SET updated_at = $1 WHERE id = $2", time.Now().AddDate(0, 0, -31), activeNotifications.Result[0].ID)
+	_, err = trx.Execute("UPDATE notifications SET updated_at = $1 WHERE id = $2", time.Now().AddDate(0, 0, -31), activeNotifications.Result[0].ID)
+	Expect(err).IsNil()
 
 	err = bus.Dispatch(aryaStarkCtx, activeNotifications)
 	Expect(err).IsNil()
@@ -151,4 +153,31 @@ func TestNotificationStorage_GetNotificationByID_OtherUser(t *testing.T) {
 	err = bus.Dispatch(aryaStarkCtx, q)
 	Expect(errors.Cause(err)).Equals(app.ErrNotFound)
 	Expect(q.Result).IsNil()
+}
+
+func TestNotificationStorage_PurgeExpiredNotifications(t *testing.T) {
+	SetupDatabaseTest(t)
+	defer TeardownDatabaseTest()
+	defer ResetDatabase()
+
+	newPost := &cmd.AddNewPost{Title: "Title", Description: "Description"}
+	err := bus.Dispatch(jonSnowCtx, newPost)
+	Expect(err).IsNil()
+
+	addNotification1 := &cmd.AddNewNotification{User: jonSnow, Title: "Hello World 1", Link: "http://www.google.com", PostID: newPost.Result.ID}
+	addNotification2 := &cmd.AddNewNotification{User: jonSnow, Title: "Hello World 2", Link: "http://www.google.com", PostID: newPost.Result.ID}
+	addNotification3 := &cmd.AddNewNotification{User: jonSnow, Title: "Hello World 3", Link: "http://www.microsoft.com", PostID: newPost.Result.ID}
+	addNotification4 := &cmd.AddNewNotification{User: jonSnow, Title: "Hello World 4", Link: "http://www.microsoft.com", PostID: newPost.Result.ID}
+	err = bus.Dispatch(aryaStarkCtx, addNotification1, addNotification2, addNotification3, addNotification4)
+	Expect(err).IsNil()
+
+	rows, err := trx.Execute("UPDATE notifications SET created_at = NOW() - INTERVAL '2 years' WHERE link = 'http://www.microsoft.com'")
+	Expect(err).IsNil()
+	Expect(rows).Equals(int64(2))
+
+	trx.MustCommit()
+
+	purgeCommand := &cmd.PurgeExpiredNotifications{}
+	bus.Publish(context.Background(), purgeCommand)
+	Expect(purgeCommand.NumOfDeletedNotifications).Equals(2)
 }

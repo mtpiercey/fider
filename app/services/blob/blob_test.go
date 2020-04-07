@@ -36,7 +36,7 @@ func setupS3(t *testing.T) {
 	bus.Init(s3.Service{})
 
 	bucket := aws.String(env.Config.BlobStorage.S3.BucketName)
-	s3.DefaultClient.CreateBucket(&awss3.CreateBucketInput{
+	_, _ = s3.DefaultClient.CreateBucket(&awss3.CreateBucketInput{
 		Bucket: bucket,
 	})
 }
@@ -116,9 +116,9 @@ func AllOperations(ctx context.Context) {
 		err = bus.Dispatch(ctx, q)
 		Expect(err).IsNil()
 		Expect(q.Key).Equals(testCase.key)
-		Expect(q.Result.Content).Equals(bytes)
 		Expect(q.Result.Size).Equals(int64(len(bytes)))
 		Expect(q.Result.ContentType).Equals(testCase.contentType)
+		Expect(q.Result.Content).Equals(bytes)
 
 		err = bus.Dispatch(ctx, &cmd.DeleteBlob{
 			Key: testCase.key,

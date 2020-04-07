@@ -26,6 +26,7 @@ var requiredDeps = []string{
 	"npm",
 	"node",
 	"mage",
+	"golangci-lint",
 }
 var buildTime = time.Now().Format("2006.01.02.150405")
 var buildNumber = os.Getenv("CIRCLE_BUILD_NUM")
@@ -35,6 +36,7 @@ var Aliases = map[string]interface{}{
 	"build": Build.All,
 	"test":  Test.All,
 	"watch": Watch.All,
+	"lint":  Lint.All,
 }
 
 func init() {
@@ -58,10 +60,6 @@ func Migrate() error {
 	return sh.Run("godotenv", "-f", ".env", "./"+exeName, "migrate")
 }
 
-func Lint() error {
-	return sh.Run("npx", "tslint", "-c", "tslint.json", "'public/**/*.{ts,tsx}'", "'tests/**/*.{ts,tsx}'")
-}
-
 func Clean() error {
 	os.RemoveAll("./dist")
 	return os.Mkdir("./dist", 0777)
@@ -70,8 +68,7 @@ func Clean() error {
 type Watch mg.Namespace
 
 func (Watch) All() {
-	Clean()
-	Migrate()
+	mg.SerialDeps(Clean, Build.Server, Migrate)
 	mg.Deps(Watch.Server, Watch.UI)
 }
 
@@ -89,24 +86,13 @@ func (Build) All() {
 	mg.Deps(Build.Server, Build.UI)
 }
 
-func (Build) Docker() error {
-	mg.Deps(Build.UI)
-	if err := buildServer(map[string]string{
-		"CGO_ENABLED": "0",
-		"GOOS":        "linux",
-		"GOARCH":      "amd64",
-	}); err != nil {
-		return err
-	}
-
-	return sh.Run("docker", "build", "-t", "getfider/fider", ".")
-}
-
 func (Build) Server() error {
-	return buildServer(map[string]string{
+	env := map[string]string{
 		"GOOS":   runtime.GOOS,
 		"GOARCH": runtime.GOARCH,
-	})
+	}
+	ldflags := "-s -w -X main.buildtime=" + buildTime + " -X main.buildnumber=" + buildNumber
+	return sh.RunWith(env, "go", "build", "-ldflags", ldflags, "-o", exeName, ".")
 }
 
 func (Build) UI() error {
@@ -138,12 +124,21 @@ func (Test) UI() error {
 	return sh.RunWith(env, "npx", "jest", "./public")
 }
 
-// Utils
-func buildServer(env map[string]string) error {
-	ldflags := "-s -w -X main.buildtime=" + buildTime + " -X main.buildnumber=" + buildNumber
-	return sh.RunWith(env, "go", "build", "-ldflags", ldflags, "-o", exeName, ".")
+type Lint mg.Namespace
+
+func (Lint) All() {
+	mg.Deps(Lint.Server, Lint.UI)
 }
 
+func (Lint) UI() error {
+	return sh.Run("npx", "tslint", "-c", "tslint.json", "'public/**/*.{ts,tsx}'", "'tests/**/*.{ts,tsx}'")
+}
+
+func (Lint) Server() error {
+	return sh.Run("golangci-lint", "run")
+}
+
+// Utils
 func missingDependencies() []string {
 	var missingDeps []string
 	for _, dep := range requiredDeps {

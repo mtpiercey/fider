@@ -19,23 +19,15 @@ interface InputProps {
   suffix?: string | JSX.Element;
   placeholder?: string;
   onIconClick?: () => void;
-  onSubmit?: () => void;
   onFocus?: () => void;
-  inputRef?: (node: HTMLInputElement) => void;
+  inputRef?: React.MutableRefObject<any>;
   onChange?: (value: string) => void;
 }
 
-export const Input: React.StatelessComponent<InputProps> = props => {
+export const Input: React.FunctionComponent<InputProps> = props => {
   const onChange = (e: React.FormEvent<HTMLInputElement>) => {
     if (props.onChange) {
       props.onChange(e.currentTarget.value);
-    }
-  };
-
-  const onKeyDown = (event: React.KeyboardEvent<HTMLInputElement>): void => {
-    if (event.keyCode === 13 && props.onSubmit) {
-      props.onSubmit();
-      event.preventDefault();
     }
   };
 
@@ -80,7 +72,6 @@ export const Input: React.StatelessComponent<InputProps> = props => {
               disabled={props.disabled}
               value={props.value}
               placeholder={props.placeholder}
-              onKeyDown={props.onSubmit ? onKeyDown : undefined}
               onChange={onChange}
             />
             {icon}

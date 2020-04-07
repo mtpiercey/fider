@@ -8,10 +8,7 @@ import (
 	"github.com/getfider/fider/app/models"
 	"github.com/getfider/fider/app/pkg/bus"
 	"github.com/getfider/fider/app/pkg/dbx"
-	"github.com/stripe/stripe-go/client"
 )
-
-var stripeClient *client.API
 
 func init() {
 	bus.Register(Service{})
@@ -33,6 +30,8 @@ func (s Service) Enabled() bool {
 
 func (s Service) Init() {
 	bus.AddHandler(storeEvent)
+
+	bus.AddListener(purgeExpiredNotifications)
 
 	bus.AddHandler(markAllNotificationsAsRead)
 	bus.AddHandler(markNotificationAsRead)

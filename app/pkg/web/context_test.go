@@ -26,10 +26,8 @@ func newGetContext(rawurl string, headers map[string]string) *web.Context {
 		req.TLS = &tls.ConnectionState{}
 	}
 
-	if headers != nil {
-		for k, v := range headers {
-			req.Header.Set(k, v)
-		}
+	for k, v := range headers {
+		req.Header.Set(k, v)
 	}
 
 	return web.NewContext(e, req, res, nil)
@@ -234,6 +232,7 @@ func TestTryAgainLater(t *testing.T) {
 	err := ctx.TryAgainLater(24 * time.Hour)
 	Expect(err).IsNil()
 	resp := ctx.Response.(*httptest.ResponseRecorder)
+	Expect(ctx.ResponseStatusCode).Equals(http.StatusServiceUnavailable)
 	Expect(resp.Code).Equals(http.StatusServiceUnavailable)
 	Expect(resp.Header().Get("Cache-Control")).Equals("no-cache, no-store, must-revalidate")
 	Expect(resp.Header().Get("Retry-After")).Equals("86400")

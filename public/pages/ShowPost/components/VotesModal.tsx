@@ -63,7 +63,7 @@ export class VotesModal extends React.Component<VotesModalProps, VotesModalState
 
   public render() {
     return (
-      <Modal.Window className="c-votes-modal" isOpen={this.props.isOpen} center={false} onClose={this.props.onClose}>
+      <Modal.Window className="c-votes-modal" isOpen={this.props.isOpen} center={false} onClose={this.closeModal}>
         <Modal.Content>
           {this.state.isLoading && <Loader />}
           {!this.state.isLoading && (
@@ -84,8 +84,8 @@ export class VotesModal extends React.Component<VotesModalProps, VotesModalState
                       <UserName user={x.user} />
                       <span className="info">{x.user.email}</span>
                     </span>
-                    <span className="info">
-                      <Moment date={x.createdAt} />
+                    <span className="l-date info">
+                      <Moment date={x.createdAt} useRelative={false} format="short" />
                     </span>
                   </ListItem>
                 ))}

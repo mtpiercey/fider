@@ -3,6 +3,8 @@ package env
 import (
 	"fmt"
 	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 
 	"path"
@@ -12,15 +14,16 @@ import (
 )
 
 type config struct {
-	Environment string `env:"GO_ENV,default=production"`
-	AutoSSL     bool   `env:"SSL_AUTO,default=false"`
-	SSLCert     string `env:"SSL_CERT"`
-	SSLCertKey  string `env:"SSL_CERT_KEY"`
-	Port        string `env:"PORT,default=3000"`
-	HostMode    string `env:"HOST_MODE,default=single"`
-	HostDomain  string `env:"HOST_DOMAIN"`
-	JWTSecret   string `env:"JWT_SECRET,required"`
-	Rendergun   struct {
+	Environment 	 string `env:"GO_ENV,default=production"`
+	SignUpDisabled bool   `env:"SIGNUP_DISABLED,default=false"`
+	AutoSSL     	 bool   `env:"SSL_AUTO,default=false"`
+	SSLCert     	 string `env:"SSL_CERT"`
+	SSLCertKey  	 string `env:"SSL_CERT_KEY"`
+	Port        	 string `env:"PORT,default=3000"`
+	HostMode    	 string `env:"HOST_MODE,default=single"`
+	HostDomain  	 string `env:"HOST_DOMAIN"`
+	JWTSecret   	 string `env:"JWT_SECRET,required"`
+	Rendergun   	 struct {
 		URL string `env:"RENDERGUN_URL"`
 	}
 	Database struct {
@@ -181,7 +184,9 @@ func IsDevelopment() bool {
 func Path(p ...string) string {
 	root := "./"
 	if IsTest() {
-		root = os.Getenv("GOPATH") + "/src/github.com/getfider/fider/"
+		_, b, _, _ := runtime.Caller(0)
+		basepath := filepath.Dir(b)
+		root = path.Join(basepath, "../../../")
 	}
 
 	elems := append([]string{root}, p...)

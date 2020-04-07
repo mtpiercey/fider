@@ -35,6 +35,7 @@ func Register(svc Service) {
 func Reset() {
 	busLock.Lock()
 	defer busLock.Unlock()
+
 	services = make([]Service, 0)
 	handlers = make(map[string]HandlerFunc)
 	listeners = make(map[string][]HandlerFunc)
@@ -82,6 +83,13 @@ func AddListener(handler HandlerFunc) {
 	listeners[eventName] = append(listeners[eventName], handler)
 }
 
+func MustDispatch(ctx context.Context, msgs ...Msg) {
+	err := Dispatch(ctx, msgs...)
+	if err != nil {
+		panic(err)
+	}
+}
+
 func Dispatch(ctx context.Context, msgs ...Msg) error {
 	if len(msgs) == 0 {
 		return nil
@@ -100,7 +108,7 @@ func Dispatch(ctx context.Context, msgs ...Msg) error {
 		key := keyForElement(elem)
 		handler := handlers[key]
 		if handler == nil {
-			panic(fmt.Errorf("could not find handler for '%s'", key))
+			panic(fmt.Errorf("could not find handler for '%s'.", key))
 		}
 
 		var params = []reflect.Value{
